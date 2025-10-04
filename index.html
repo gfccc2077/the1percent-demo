@@ -68,7 +68,8 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <script type="text/babel">
+  <!-- IMPORTANT: data-presets='react' so JSX compiles on GitHub Pages -->
+  <script type="text/babel" data-presets="react">
     const { useEffect, useMemo, useState } = React;
 
     const TICKERS = [
@@ -78,7 +79,7 @@
     ];
     const MICRO = 0.0001;
 
-    function fmt(n, d=2){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:d, minimumFractionDigits:d}); }
+    const fmt = (n, d=2) => Number(n).toLocaleString(undefined, {maximumFractionDigits:d, minimumFractionDigits:d});
 
     function useMockQuotes() {
       const [quotes, setQuotes] = useState(TICKERS.map(t => ({ symbol: t.symbol, price: 180 + Math.random()*40, as_of: new Date() })));
@@ -103,7 +104,7 @@
       const quotes = useMockQuotes();
       const lastBy = useMemo(() => Object.fromEntries(quotes.map(q => [q.symbol, q.price])), [quotes]);
 
-      function pop(msg){ setToast(msg); setTimeout(()=>setToast(null), 1500); }
+      const pop = (msg) => { setToast(msg); setTimeout(()=>setToast(null), 1500); };
 
       function buy(symbol, micros){
         const px = lastBy[symbol]; if(!px) return pop("No price.");
@@ -208,12 +209,12 @@
             </select>
             <input className="input" inputMode="numeric" value={micros} onChange={e=>setMicros(Math.max(100, parseInt(e.target.value||"0",10)))} />
             <div className="field">
-              <div style="font-size:12px; opacity:.7">Estimated notional</div>
-              <div style="font-weight:700">${fmt(est)} (demo)</div>
+              <div style={{fontSize:12, opacity:.7}}>Estimated notional</div>
+              <div style={{fontWeight:700}}>${fmt(est)} (demo)</div>
             </div>
             <div className="field">
-              <div style="font-size:12px; opacity:.7">Fee (0.05%)</div>
-              <div style="font-weight:700">${fmt(est*0.0005,4)}</div>
+              <div style={{fontSize:12, opacity:.7}}>Fee (0.05%)</div>
+              <div style={{fontWeight:700}}">${fmt(est*0.0005,4)}</div>
             </div>
           </div>
           <div className="actions">
@@ -241,7 +242,7 @@
             <Stat label="Balance" value={"$"+fmt(balance)} />
             <Stat label="Equity" value={"$"+fmt(equity)} />
           </div>
-          <div style="font-size:12px; opacity:.7; border-top:1px solid rgba(0,0,0,0.06); padding-top:8px;">
+          <div style={{fontSize:12, opacity:.7, borderTop:'1px solid rgba(0,0,0,0.06)', paddingTop:8}}>
             This is a fantasy trading simulation for demonstration purposes only. Not financial advice. Not affiliated with any companies or exchanges.
           </div>
         </div>
@@ -269,20 +270,18 @@
             <div style={{fontSize:12, opacity:.7}}>Balance</div><div style={{fontWeight:700}}>${fmt(balance)}</div>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr auto'}}>
-            <div style={{fontSize:12, opacity:.7}}>Equity</div><div style={{fontWeight:700}}>${fmt(equity)}</div>
+            <div style={{fontSize:12, opacity:.7}}>Equity</div><div style={{fontWeight:700}}">${fmt(equity)}</div>
           </div>
         </div>
       );
     }
 
-    function Stat({ label, value }){
-      return (
-        <div className="field">
-          <div style={{fontSize:12, opacity:.7}}>{label}</div>
-          <div style={{fontSize:20, fontWeight:700}}>{value}</div>
-        </div>
-      );
-    }
+    const Stat = ({ label, value }) => (
+      <div className="field">
+        <div style={{fontSize:12, opacity:.7}}>{label}</div>
+        <div style={{fontSize:20, fontWeight:700}}>{value}</div>
+      </div>
+    );
 
     function Leaderboard({ equity, handle }){
       const base = 10_000_000;
