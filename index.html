@@ -63,12 +63,10 @@
     <div style="opacity:.6">Prototype UI</div>
   </div>
 
-  <!-- React + Babel CDNs -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- IMPORTANT: data-presets='react' so JSX compiles on GitHub Pages -->
   <script type="text/babel" data-presets="react">
     const { useEffect, useMemo, useState } = React;
 
@@ -99,7 +97,7 @@
     function App(){
       const [handle, setHandle] = useState("player");
       const [balance, setBalance] = useState(10_000_000);
-      const [positions, setPositions] = useState({}); // { AAPL: { micros, avgPrice } }
+      const [positions, setPositions] = useState({});
       const [toast, setToast] = useState(null);
       const quotes = useMockQuotes();
       const lastBy = useMemo(() => Object.fromEntries(quotes.map(q => [q.symbol, q.price])), [quotes]);
@@ -207,14 +205,14 @@
             <select value={symbol} onChange={e=>setSymbol(e.target.value)}>
               {TICKERS.map(t => <option key={t.symbol} value={t.symbol}>{t.symbol} — {t.name}</option>)}
             </select>
-            <input className="input" inputMode="numeric" value={micros} onChange={e=>setMicros(Math.max(100, parseInt(e.target.value||"0",10)))} />
+            <input className="input" inputMode="numeric" value={micros} onChange={e=>setMicros(Math.max(100, parseInt(e.target.value or "0",10)))} />
             <div className="field">
               <div style={{fontSize:12, opacity:.7}}>Estimated notional</div>
               <div style={{fontWeight:700}}>${fmt(est)} (demo)</div>
             </div>
             <div className="field">
               <div style={{fontSize:12, opacity:.7}}>Fee (0.05%)</div>
-              <div style={{fontWeight:700}}">${fmt(est*0.0005,4)}</div>
+              <div style={{fontWeight:700}}>${fmt(est*0.0005,4)}</div>
             </div>
           </div>
           <div className="actions">
@@ -270,7 +268,7 @@
             <div style={{fontSize:12, opacity:.7}}>Balance</div><div style={{fontWeight:700}}>${fmt(balance)}</div>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr auto'}}>
-            <div style={{fontSize:12, opacity:.7}}>Equity</div><div style={{fontWeight:700}}">${fmt(equity)}</div>
+            <div style={{fontSize:12, opacity:.7}}>Equity</div><div style={{fontWeight:700}}>${fmt(equity)}</div>
           </div>
         </div>
       );
