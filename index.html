@@ -5,12 +5,310 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>The 1% — Demo</title>
   <meta name="description" content="The 1% — fantasy trading simulation demo">
+  <link rel="icon" href="data:,">
+  <style>
+    :root { --bg: #F3F5FA; --card: rgba(255,255,255,0.65); --ink: #0B0C0F; }
+    * { box-sizing: border-box; }
+    body { margin:0; font: 16px/1.45 -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: linear-gradient(180deg,#F8FAFF 0%, var(--bg) 100%); }
+    .topbar { position: sticky; top:0; height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; backdrop-filter: saturate(140%) blur(12px); background: rgba(255,255,255,0.72); border-bottom:1px solid rgba(0,0,0,0.06); z-index: 10; }
+    .wrap { max-width: 1100px; margin: 60px auto 120px; padding: 0 24px; }
+    h1 { margin: 0 0 8px; font-size: 34px; letter-spacing:-0.5px; }
+    .lead { margin:0; opacity:.7; max-width:760px; }
+    .grid { display:grid; grid-template-columns: repeat(3,1fr); gap:16px; }
+    .card { border-radius: 20px; background: var(--card); border: 1px solid rgba(0,0,0,0.06); padding:20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.35); backdrop-filter: blur(12px); }
+    .section { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+    .section .title { font-weight: 800; letter-spacing:-0.3px; }
+    .section .sub { font-size:12px; opacity:.6; }
+    .quotes { display:grid; grid-template-columns: repeat(3,1fr); gap:12px; }
+    .qbox { border-radius:16px; padding:16px; background: rgba(255,255,255,0.55); border:1px solid rgba(0,0,0,0.05); box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
+    .input, select, button { height:44px; border-radius:12px; border:1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.9); padding:0 12px; outline:none; }
+    .field { border-radius:12px; background: rgba(255,255,255,0.75); border:1px solid rgba(0,0,0,0.06); padding:12px; }
+    .row { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:12px; }
+    .actions { display:flex; gap:12px; margin-top:12px; }
+    .btn { height:44px; border-radius:12px; border:none; color:white; font-weight:700; cursor:pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+    .buy { background: linear-gradient(180deg, #38ef7d 0%, #11998e 100%); }
+    .sell { background: linear-gradient(180deg, #ff5858 0%, #f857a6 100%); }
+    .tableH, .tableR { display:grid; grid-template-columns: 1fr repeat(6,1fr); gap:0; padding:10px 8px; }
+    .tableH { font-size:12px; opacity:.7; padding-top:6px; padding-bottom:6px; }
+    .tableR { border-radius:12px; background: rgba(255,255,255,0.55); border:1px solid rgba(0,0,0,0.05); margin-bottom:8px; }
+    .lbRow { display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; background: rgba(255,255,255,0.55); border:1px solid rgba(0,0,0,0.05); }
+    .tag { font-size:12px; padding:4px 8px; border-radius:999px; background: rgba(0,0,0,0.06); display:inline-block; }
+    .toast { position:fixed; left:50%; bottom:30px; transform:translateX(-50%); padding:12px 16px; background: rgba(0,0,0,0.85); color:white; border-radius:12px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+    .footer { position:fixed; left:0; right:0; bottom:0; height:48px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; backdrop-filter: saturate(140%) blur(12px); background: rgba(255,255,255,0.72); border-top:1px solid rgba(0,0,0,0.06); }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr 1fr; } .quotes { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
-  <h1>Trade like the 1%</h1>
-  <p>
-    A lightweight prototype of <b>The 1%</b> — a <b>fantasy trading simulation</b> where players experiment with market moves in a simple browser demo.
-    This experience uses simulated prices for demonstration only.
-  </p>
+  <div class="topbar">
+    <div style="font-weight:700">The 1%</div>
+    <div style="opacity:.7">prototype</div>
+  </div>
+
+  <div class="wrap">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <div>
+        <h1>Trade like the 1%</h1>
+        <p class="lead">
+          A lightweight prototype of <b>The 1%</b> — a <b>fantasy trading simulation</b> where players experiment with market moves in a simple browser demo.
+          This experience uses simulated prices for demonstration only.
+        </p>
+      </div>
+    </div>
+
+    <div id="app"></div>
+  </div>
+
+  <div class="footer">
+    <div>© <span id="year"></span> The 1%</div>
+    <div style="opacity:.6">Prototype UI</div>
+  </div>
+
+  <!-- React + Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useState } = React;
+
+    const TICKERS = [
+      { symbol: "AAPL", name: "Apple" },
+      { symbol: "NVDA", name: "Nvidia" },
+      { symbol: "TSLA", name: "Tesla" },
+    ];
+    const MICRO = 0.0001;
+
+    function fmt(n, d=2){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:d, minimumFractionDigits:d}); }
+
+    function useMockQuotes() {
+      const [quotes, setQuotes] = useState(TICKERS.map(t => ({ symbol: t.symbol, price: 180 + Math.random()*40, as_of: new Date() })));
+      useEffect(() => {
+        const id = setInterval(() => {
+          setQuotes(prev => prev.map(q => ({
+            ...q,
+            price: Math.max(1, q.price * (1 + (Math.random()-0.5) * 0.002)),
+            as_of: new Date(),
+          })));
+        }, 1000);
+        return () => clearInterval(id);
+      }, []);
+      return quotes;
+    }
+
+    function App(){
+      const [handle, setHandle] = useState("player");
+      const [balance, setBalance] = useState(10_000_000);
+      const [positions, setPositions] = useState({}); // { AAPL: { micros, avgPrice } }
+      const [toast, setToast] = useState(null);
+      const quotes = useMockQuotes();
+      const lastBy = useMemo(() => Object.fromEntries(quotes.map(q => [q.symbol, q.price])), [quotes]);
+
+      function pop(msg){ setToast(msg); setTimeout(()=>setToast(null), 1500); }
+
+      function buy(symbol, micros){
+        const px = lastBy[symbol]; if(!px) return pop("No price.");
+        const p = positions[symbol] || { micros: 0, avgPrice: 0 };
+        const microPrice = px * MICRO;
+        const notional = micros * microPrice;
+        const fee = notional * 0.0005;
+        const total = notional + fee;
+        if (balance < total) return pop("Insufficient balance.");
+        const newShares = p.micros*MICRO + micros*MICRO;
+        const newAvg = newShares > 0 ? ((p.avgPrice*(p.micros*MICRO)) + (px*(micros*MICRO))) / newShares : 0;
+        setPositions({ ...positions, [symbol]: { micros: p.micros + micros, avgPrice: newAvg } });
+        setBalance(balance - total);
+        pop(`Bought ${micros.toLocaleString()} micros of ${symbol}.`);
+      }
+      function sell(symbol, micros){
+        const px = lastBy[symbol]; if(!px) return pop("No price.");
+        const p = positions[symbol] || { micros: 0, avgPrice: 0 };
+        if (micros > p.micros) return pop("Not enough micros.");
+        const microPrice = px * MICRO;
+        const notional = micros * microPrice;
+        const fee = notional * 0.0005;
+        const proceeds = notional - fee;
+        const left = p.micros - micros;
+        const next = left === 0 ? { micros: 0, avgPrice: 0 } : { micros: left, avgPrice: p.avgPrice };
+        setPositions({ ...positions, [symbol]: next });
+        setBalance(balance + proceeds);
+        pop(`Sold ${micros.toLocaleString()} micros of ${symbol}.`);
+      }
+
+      const portfolio = useMemo(() => {
+        const lines = TICKERS.map(t => {
+          const p = positions[t.symbol] || { micros: 0, avgPrice: 0 };
+          const shares = p.micros * MICRO;
+          const last = lastBy[t.symbol] || 0;
+          const value = shares * last;
+          const pnl = shares * (last - p.avgPrice);
+          return { symbol: t.symbol, micros: p.micros, shares, avg: p.avgPrice, last, value, pnl };
+        });
+        const posValue = lines.reduce((a,b)=>a+b.value, 0);
+        const equity = balance + posValue;
+        return { lines, posValue, equity };
+      }, [positions, balance, lastBy]);
+
+      return (
+        <div className="grid">
+          <div className="card" style={{gridColumn:'span 3'}}>
+            <div className="section">
+              <div>
+                <div className="title">Quotes</div>
+                <div className="sub">Simulated</div>
+              </div>
+            </div>
+            <div className="quotes">
+              {quotes.map(q => (
+                <div key={q.symbol} className="qbox">
+                  <div style={{fontSize:14, opacity:.7}}>{q.symbol}</div>
+                  <div style={{fontSize:28, fontWeight:700}}>${fmt(q.price)}</div>
+                  <div style={{fontSize:12, opacity:.6}}>as of {q.as_of.toLocaleTimeString()}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card" style={{gridColumn:'span 2'}}>
+            <div className="section"><div className="title">Trade</div><div className="sub">Micros (demo)</div></div>
+            <TradePanel onBuy={buy} onSell={sell} quotes={quotes} />
+          </div>
+
+          <div className="card">
+            <div className="section"><div className="title">Account</div><div className="sub">Profile</div></div>
+            <AccountPanel handle={handle} setHandle={setHandle} balance={balance} equity={portfolio.equity} />
+          </div>
+
+          <div className="card" style={{gridColumn:'span 2'}}>
+            <div className="section"><div className="title">Portfolio</div><div className="sub">Live P&L</div></div>
+            <Portfolio lines={portfolio.lines} balance={balance} equity={portfolio.equity} />
+          </div>
+
+          <div className="card">
+            <div className="section"><div className="title">Leaderboard</div><div className="sub">(local demo)</div></div>
+            <Leaderboard equity={portfolio.equity} handle={handle} />
+          </div>
+
+          {toast && <div className="toast">{toast}</div>}
+        </div>
+      );
+    }
+
+    function TradePanel({ quotes, onBuy, onSell }){
+      const [symbol, setSymbol] = React.useState("AAPL");
+      const [micros, setMicros] = React.useState(10000);
+      const q = quotes.find(x => x.symbol === symbol);
+      const price = q ? q.price : 0;
+      const est = price * MICRO * micros;
+
+      return (
+        <div>
+          <div className="row">
+            <select value={symbol} onChange={e=>setSymbol(e.target.value)}>
+              {TICKERS.map(t => <option key={t.symbol} value={t.symbol}>{t.symbol} — {t.name}</option>)}
+            </select>
+            <input className="input" inputMode="numeric" value={micros} onChange={e=>setMicros(Math.max(100, parseInt(e.target.value||"0",10)))} />
+            <div className="field">
+              <div style="font-size:12px; opacity:.7">Estimated notional</div>
+              <div style="font-weight:700">${fmt(est)} (demo)</div>
+            </div>
+            <div className="field">
+              <div style="font-size:12px; opacity:.7">Fee (0.05%)</div>
+              <div style="font-weight:700">${fmt(est*0.0005,4)}</div>
+            </div>
+          </div>
+          <div className="actions">
+            <button className="btn buy" onClick={()=>onBuy(symbol, micros)}>Buy</button>
+            <button className="btn sell" onClick={()=>onSell(symbol, micros)}>Sell</button>
+          </div>
+        </div>
+      );
+    }
+
+    function AccountPanel({ handle, setHandle, balance, equity }){
+      return (
+        <div style={{display:'grid', gap:12}}>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+            <div>
+              <div style={{fontSize:12, opacity:.7}}>Handle</div>
+              <input className="input" value={handle} onChange={e=>setHandle(e.target.value)} placeholder="your-handle" />
+            </div>
+            <div>
+              <div style={{fontSize:12, opacity:.7}}>Mode</div>
+              <span className="tag">DEMO</span>
+            </div>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+            <Stat label="Balance" value={"$"+fmt(balance)} />
+            <Stat label="Equity" value={"$"+fmt(equity)} />
+          </div>
+          <div style="font-size:12px; opacity:.7; border-top:1px solid rgba(0,0,0,0.06); padding-top:8px;">
+            This is a fantasy trading simulation for demonstration purposes only. Not financial advice. Not affiliated with any companies or exchanges.
+          </div>
+        </div>
+      );
+    }
+
+    function Portfolio({ lines, balance, equity }){
+      return (
+        <div>
+          <div className="tableH">
+            <div>Symbol</div><div style={{textAlign:'right'}}>Micros</div><div style={{textAlign:'right'}}>Shares</div><div style={{textAlign:'right'}}>Avg</div><div style={{textAlign:'right'}}>Last</div><div style={{textAlign:'right'}}>Value</div><div style={{textAlign:'right'}}>P&L</div>
+          </div>
+          {lines.map(r => (
+            <div className="tableR" key={r.symbol}>
+              <div>{r.symbol}</div>
+              <div style={{textAlign:'right'}}>{r.micros.toLocaleString()}</div>
+              <div style={{textAlign:'right'}}>{fmt(r.shares,4)}</div>
+              <div style={{textAlign:'right'}}>${fmt(r.avg)}</div>
+              <div style={{textAlign:'right'}}>${fmt(r.last)}</div>
+              <div style={{textAlign:'right'}}>${fmt(r.value)}</div>
+              <div style={{textAlign:'right', color: r.pnl>=0 ? '#0b7e2d' : '#b00020'}}>{r.pnl>=0?'+':''}${fmt(r.pnl)}</div>
+            </div>
+          ))}
+          <div style={{display:'grid', gridTemplateColumns:'1fr auto', marginTop:8}}>
+            <div style={{fontSize:12, opacity:.7}}>Balance</div><div style={{fontWeight:700}}>${fmt(balance)}</div>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr auto'}}>
+            <div style={{fontSize:12, opacity:.7}}>Equity</div><div style={{fontWeight:700}}>${fmt(equity)}</div>
+          </div>
+        </div>
+      );
+    }
+
+    function Stat({ label, value }){
+      return (
+        <div className="field">
+          <div style={{fontSize:12, opacity:.7}}>{label}</div>
+          <div style={{fontSize:20, fontWeight:700}}>{value}</div>
+        </div>
+      );
+    }
+
+    function Leaderboard({ equity, handle }){
+      const base = 10_000_000;
+      const rivals = [
+        { handle: "phoenix", ret: 0.124 },
+        { handle: "quantum", ret: 0.082 },
+        { handle: "aurora", ret: -0.013 },
+        { handle: "atlas", ret: 0.034 },
+      ];
+      const yourRet = (equity - base) / base;
+      const all = [...rivals, { handle, ret: yourRet }].sort((a,b)=>b.ret-a.ret).slice(0,5);
+      return (
+        <div>
+          {all.map((r,i)=>(
+            <div key={r.handle} className="lbRow">
+              <div style={{opacity:.7}}>#{i+1}</div>
+              <div style={{fontWeight:600}}>{r.handle}</div>
+              <div style={{marginLeft:'auto', fontVariantNumeric:'tabular-nums'}}>{r.ret>=0?'+':''}{(r.ret*100).toFixed(2)}%</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
