@@ -1,283 +1,360 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>The 1% — Demo</title>
-  <meta name="description" content="The 1% — fantasy trading simulation demo"/>
-  <style>
-    :root { --bg:#F3F5FA; --card:rgba(255,255,255,.65); --ink:#0B0C0F; }
-    *{box-sizing:border-box}
-    body{margin:0;font:16px/1.45 -apple-system,BlinkMacSystemFont,Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:linear-gradient(180deg,#F8FAFF, var(--bg))}
-    .topbar{position:sticky;top:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(255,255,255,.72);backdrop-filter:saturate(140%) blur(12px);border-bottom:1px solid rgba(0,0,0,.06)}
-    .wrap{max-width:1100px;margin:60px auto 120px;padding:0 24px}
-    h1{margin:0 0 8px;font-size:34px;letter-spacing:-.5px}
-    .lead{margin:0;opacity:.7;max-width:760px}
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-    .card{border-radius:20px;background:var(--card);border:1px solid rgba(0,0,0,.06);padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.06), inset 0 0 0 .5px rgba(255,255,255,.35);backdrop-filter:blur(12px)}
-    .section{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
-    .title{font-weight:800;letter-spacing:-.3px}
-    .sub{font-size:12px;opacity:.6}
-    .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-    .qbox{border-radius:16px;padding:16px;background:rgba(255,255,255,.55);border:1px solid rgba(0,0,0,.05);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
-    .input,select,button{height:44px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.9);padding:0 12px;outline:none}
-    .field{border-radius:12px;background:rgba(255,255,255,.75);border:1px solid rgba(0,0,0,.06);padding:12px}
-    .row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
-    .actions{display:flex;gap:12px;margin-top:12px}
-    .btn{height:44px;border-radius:12px;border:none;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.06)}
-    .buy{background:linear-gradient(180deg,#38ef7d,#11998e)}
-    .sell{background:linear-gradient(180deg,#ff5858,#f857a6)}
-    .tableH,.tableR{display:grid;grid-template-columns:1fr repeat(6,1fr);gap:0;padding:10px 8px}
-    .tableH{font-size:12px;opacity:.7;padding-top:6px;padding-bottom:6px}
-    .tableR{border-radius:12px;background:rgba(255,255,255,.55);border:1px solid rgba(0,0,0,.05);margin-bottom:8px}
-    .lbRow{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.55);border:1px solid rgba(0,0,0,.05)}
-    .tag{font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(0,0,0,.06);display:inline-block}
-    .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);padding:12px 16px;background:rgba(0,0,0,.85);color:#fff;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.2)}
-    .footer{position:fixed;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(255,255,255,.72);backdrop-filter:saturate(140%) blur(12px);border-top:1px solid rgba(0,0,0,.06)}
-    @media (max-width:900px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr 1fr}.quotes{grid-template-columns:1fr}}
-  </style>
-</head>
-<body>
-  <div class="topbar">
-    <div style="font-weight:700">The 1%</div>
-    <div style="opacity:.7">prototype</div>
-  </div>
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-  <div class="wrap">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div>
-        <h1>Trade like the 1%</h1>
-        <p class="lead">
-          A lightweight prototype of <b>The 1%</b> — a <b>fantasy trading simulation</b> where players experiment with market moves in a simple browser demo.
-          This experience uses simulated prices for demonstration only.
-        </p>
-      </div>
-    </div>
+// === Utility: Simple tone generator (no external audio files) ===
+function playTone({ freq = 660, duration = 300, type = "sine", volume = 0.2 }) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      ctx.close();
+    }, duration);
+  } catch (e) {
+    // Audio might be blocked until user interacts.
+  }
+}
 
-    <div id="quotesCard" class="card" style="grid-column:span 3">
-      <div class="section"><div><div class="title">Quotes</div><div class="sub">Simulated</div></div></div>
-      <div id="quotes" class="quotes"></div>
-    </div>
+function bellWinSmall() {
+  playTone({ freq: 880, duration: 120, type: "triangle", volume: 0.25 });
+  setTimeout(() => playTone({ freq: 1320, duration: 120, type: "triangle", volume: 0.22 }), 120);
+}
+function bellWinBig() {
+  bellWinSmall();
+  setTimeout(() => playTone({ freq: 1760, duration: 250, type: "square", volume: 0.22 }), 200);
+}
+function warnLoseSmall() {
+  playTone({ freq: 420, duration: 180, type: "sawtooth", volume: 0.22 });
+}
+function warnLoseBig() {
+  playTone({ freq: 240, duration: 500, type: "sawtooth", volume: 0.28 });
+  setTimeout(() => playTone({ freq: 180, duration: 400, type: "sawtooth", volume: 0.28 }), 120);
+}
 
-    <div id="tradeCard" class="card" style="grid-column:span 2">
-      <div class="section"><div class="title">Trade</div><div class="sub">Micros (demo)</div></div>
-      <div class="row">
-        <select id="symSelect"></select>
-        <input id="microsInput" class="input" inputmode="numeric" value="10000"/>
-        <div class="field">
-          <div style="font-size:12px;opacity:.7">Estimated notional</div>
-          <div id="estNotional" style="font-weight:700">$0.00 (demo)</div>
-        </div>
-        <div class="field">
-          <div style="font-size:12px;opacity:.7">Fee (0.05%)</div>
-          <div id="estFee" style="font-weight:700">$0.00</div>
-        </div>
-      </div>
-      <div class="actions">
-        <button id="buyBtn" class="btn buy">Buy</button>
-        <button id="sellBtn" class="btn sell">Sell</button>
-      </div>
-    </div>
+// === SVG Candlestick Chart (no external libs) ===
+function CandleChart({ data, width = 900, height = 320, padding = 40 }) {
+  const w = width;
+  const h = height;
 
-    <div id="acctCard" class="card">
-      <div class="section"><div class="title">Account</div><div class="sub">Profile</div></div>
-      <div style="display:grid;gap:12px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><div style="font-size:12px;opacity:.7">Handle</div><input id="handle" class="input" value="player"/></div>
-          <div><div style="font-size:12px;opacity:.7">Mode</div><span class="tag">DEMO</span></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="field"><div style="font-size:12px;opacity:.7">Balance</div><div id="balance" style="font-size:20px;font-weight:700">$0.00</div></div>
-          <div class="field"><div style="font-size:12px;opacity:.7">Equity</div><div id="equity" style="font-size:20px;font-weight:700">$0.00</div></div>
-        </div>
-        <div style="font-size:12px;opacity:.7;border-top:1px solid rgba(0,0,0,.06);padding-top:8px">
-          This is a fantasy trading simulation for demonstration purposes only. Not financial advice. Not affiliated with any companies or exchanges.
-        </div>
-      </div>
-    </div>
+  const prices = data.flatMap(d => [d.l, d.h]);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const yScale = (p) => {
+    // invert so higher prices are higher up on screen
+    const t = (p - min) / (max - min || 1);
+    return h - padding - t * (h - padding * 2);
+  };
+  const xStep = (w - padding * 2) / Math.max(1, data.length);
 
-    <div id="portCard" class="card" style="grid-column:span 2">
-      <div class="section"><div class="title">Portfolio</div><div class="sub">Live P&amp;L</div></div>
-      <div class="tableH"><div>Symbol</div><div style="text-align:right">Micros</div><div style="text-align:right">Shares</div><div style="text-align:right">Avg</div><div style="text-align:right">Last</div><div style="text-align:right">Value</div><div style="text-align:right">P&amp;L</div></div>
-      <div id="portRows"></div>
-      <div style="display:grid;grid-template-columns:1fr auto;margin-top:8px"><div style="font-size:12px;opacity:.7">Balance</div><div id="balance2" style="font-weight:700">$0.00</div></div>
-      <div style="display:grid;grid-template-columns:1fr auto"><div style="font-size:12px;opacity:.7">Equity</div><div id="equity2" style="font-weight:700">$0.00</div></div>
-    </div>
+  return (
+    <svg className="w-full" viewBox={`0 0 ${w} ${h}`}>
+      {/* Axes */}
+      <line x1={padding} y1={h - padding} x2={w - padding} y2={h - padding} stroke="#e5e7eb" />
+      <line x1={padding} y1={padding} x2={padding} y2={h - padding} stroke="#e5e7eb" />
 
-    <div id="lbCard" class="card">
-      <div class="section"><div class="title">Leaderboard</div><div class="sub">(local demo)</div></div>
-      <div id="lbRows"></div>
-    </div>
-  </div>
+      {/* Price gridlines */}
+      {Array.from({ length: 4 }).map((_, i) => {
+        const y = padding + (i * (h - padding * 2)) / 3;
+        return <line key={i} x1={padding} y1={y} x2={w - padding} y2={y} stroke="#f3f4f6" />;
+      })}
 
-  <div class="footer">
-    <div>© <span id="year"></span> The 1%</div>
-    <div style="opacity:.6">Prototype UI</div>
-  </div>
+      {/* Candles */}
+      {data.map((d, i) => {
+        const x = padding + i * xStep + xStep * 0.1;
+        const cw = xStep * 0.8;
+        const yOpen = yScale(d.o);
+        const yClose = yScale(d.c);
+        const yHigh = yScale(d.h);
+        const yLow = yScale(d.l);
+        const up = d.c >= d.o;
+        const bodyY = Math.min(yOpen, yClose);
+        const bodyH = Math.max(2, Math.abs(yClose - yOpen));
+        return (
+          <g key={i}>
+            {/* Wick */}
+            <line x1={x + cw / 2} x2={x + cw / 2} y1={yHigh} y2={yLow} stroke={up ? "#16a34a" : "#dc2626"} strokeWidth={1.5} />
+            {/* Body */}
+            <rect x={x} y={bodyY} width={cw} height={bodyH} fill={up ? "#22c55e" : "#ef4444"} opacity={0.9} rx={3} />
+          </g>
+        );
+      })}
 
-  <div id="toast" class="toast" style="display:none"></div>
+      {/* Price labels */}
+      <text x={padding} y={padding - 10} className="fill-gray-500 text-xs">High {max.toFixed(2)}</text>
+      <text x={padding} y={h - padding + 14} className="fill-gray-500 text-xs">Low {min.toFixed(2)}</text>
+    </svg>
+  );
+}
 
-  <script>
-    // ------- Utilities -------
-    const TICKERS = [
-      { symbol:"AAPL", name:"Apple" },
-      { symbol:"NVDA", name:"Nvidia" },
-      { symbol:"TSLA", name:"Tesla" },
-    ];
-    const MICRO = 0.0001;               // 1 micro-share = 0.0001 share
-    const FEE_RATE = 0.0005;            // 0.05%
-    const fmt = (n,d=2)=>Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
-    const el = id => document.getElementById(id);
+// === Random OHLC generator ===
+function nextBar(prevClose) {
+  const drift = 0.0; // neutral drift for a sim
+  const vol = 0.015; // ~1.5% per bar typical range
+  const change = (Math.random() - 0.5) * 2 * vol * prevClose + drift;
+  const open = prevClose + (Math.random() - 0.5) * 0.002 * prevClose;
+  let close = Math.max(0.01, prevClose + change);
+  const high = Math.max(open, close) + Math.random() * 0.004 * prevClose;
+  const low = Math.min(open, close) - Math.random() * 0.004 * prevClose;
+  const volume = Math.round( (Math.random() * 0.8 + 0.6) * 1_000_000 ); // 0.6M - 1.4M
+  return { o: open, h: high, l: low, c: close, v: volume };
+}
 
-    // ------- State -------
-    const state = {
-      quotes: Object.fromEntries(TICKERS.map(t=>[t.symbol, 180+Math.random()*40])),
-      lastUpdate: new Date(),
-      balance: 10_000_000,
-      positions: {} // sym -> { micros, avgPrice }
-    };
+const STOCKS = [
+  { sym: "AAPL", name: "Apple" },
+  { sym: "TSLA", name: "Tesla" },
+  { sym: "NVDA", name: "NVIDIA" },
+  { sym: "MSFT", name: "Microsoft" },
+  { sym: "AMZN", name: "Amazon" },
+  { sym: "META", name: "Meta" },
+  { sym: "GOOGL", name: "Alphabet" },
+  { sym: "NFLX", name: "Netflix" },
+];
 
-    // ------- Quotes loop -------
-    function tickQuotes(){
-      for(const s of Object.keys(state.quotes)){
-        const px = state.quotes[s];
-        state.quotes[s] = Math.max(1, px*(1+(Math.random()-0.5)*0.002));
+export default function TradingSimCandles() {
+  // Core state
+  const [symbol, setSymbol] = useState(STOCKS[0].sym);
+  const [bucks, setBucks] = useState(10000);
+  const [leverage, setLeverage] = useState(5000); // "borrowed for the day"
+  const [data, setData] = useState(() => {
+    let arr = [];
+    let last = 150 + Math.random() * 150; // start price
+    for (let i = 0; i < 60; i++) {
+      const bar = nextBar(last);
+      arr.push({ ...bar, t: i });
+      last = bar.c;
+    }
+    return arr;
+  });
+
+  const latest = data[data.length - 1];
+  const [entryPrice, setEntryPrice] = useState(latest.c);
+  const [inPosition, setInPosition] = useState(true);
+
+  // Derived metrics
+  const exposure = bucks + leverage; // how much capital is deployed (your cash + borrowed)
+  const units = inPosition ? exposure / entryPrice : 0; // simple 100% deployment model
+  const unrealizedPL = inPosition ? (latest.c - entryPrice) * units : 0;
+
+  const totalVolume = useMemo(() => data.reduce((s, d) => s + d.v, 0), [data]);
+  const avgPrice = useMemo(() => data.reduce((s, d) => s + d.c, 0) / data.length, [data]);
+  const flowBucks = totalVolume * avgPrice * 1e-6; // scaled so numbers are readable
+  const extractionPct = flowBucks > 0 ? Math.min(100, Math.abs(unrealizedPL) / flowBucks * 100) : 0;
+
+  // Sound thresholds (crossing logic)
+  const lastZoneRef = useRef("neutral");
+  useEffect(() => {
+    const pct = unrealizedPL / Math.max(1, exposure);
+    let zone = "neutral";
+    if (pct >= 0.010) zone = "+big";
+    else if (pct >= 0.003) zone = "+small";
+    else if (pct <= -0.010) zone = "-big";
+    else if (pct <= -0.003) zone = "-small";
+
+    if (zone !== lastZoneRef.current) {
+      // Only chime after user interacts (to satisfy browser autoplay policies)
+      if (window.__userInteracted) {
+        if (zone === "+small") bellWinSmall();
+        if (zone === "+big") bellWinBig();
+        if (zone === "-small") warnLoseSmall();
+        if (zone === "-big") warnLoseBig();
       }
-      state.lastUpdate = new Date();
-      render();
+      lastZoneRef.current = zone;
     }
-    setInterval(tickQuotes, 1000);
+  }, [unrealizedPL, exposure]);
 
-    // ------- Trading -------
-    function estimate(symbol, micros){
-      const px = state.quotes[symbol]||0;
-      const notional = px * MICRO * micros;
-      return { notional, fee: notional*FEE_RATE };
-    }
-    function buy(symbol, micros){
-      const {notional, fee} = estimate(symbol, micros);
-      const total = notional + fee;
-      if(state.balance < total) return toast("Insufficient balance.");
-      const p = state.positions[symbol] || { micros:0, avgPrice:0 };
-      const newShares = p.micros*MICRO + micros*MICRO;
-      const newAvg = newShares>0 ? ((p.avgPrice*(p.micros*MICRO)) + (state.quotes[symbol]*(micros*MICRO))) / newShares : 0;
-      state.positions[symbol] = { micros: p.micros + micros, avgPrice: newAvg };
-      state.balance -= total;
-      toast(`Bought ${micros.toLocaleString()} micros of ${symbol}.`);
-      render();
-    }
-    function sell(symbol, micros){
-      const p = state.positions[symbol] || { micros:0, avgPrice:0 };
-      if(micros > p.micros) return toast("Not enough micros.");
-      const {notional, fee} = estimate(symbol, micros);
-      const proceeds = notional - fee;
-      const left = p.micros - micros;
-      state.positions[symbol] = left ? { micros:left, avgPrice:p.avgPrice } : { micros:0, avgPrice:0 };
-      state.balance += proceeds;
-      toast(`Sold ${micros.toLocaleString()} micros of ${symbol}.`);
-      render();
-    }
+  // Price feed simulation
+  useEffect(() => {
+    const id = setInterval(() => {
+      setData(prev => {
+        const last = prev[prev.length - 1];
+        const bar = nextBar(last.c);
+        const next = [...prev.slice(1), { ...bar, t: last.t + 1 }];
+        return next;
+      });
+    }, 1200);
+    return () => clearInterval(id);
+  }, []);
 
-    // ------- UI wiring -------
-    function setup(){
-      // Populate symbol select
-      const sel = el("symSelect");
-      sel.innerHTML = TICKERS.map(t=>`<option value="${t.symbol}">${t.symbol} — ${t.name}</option>`).join("");
-      sel.value = "AAPL";
+  // User interaction flag for audio
+  useEffect(() => {
+    const onClick = () => (window.__userInteracted = true);
+    window.addEventListener('click', onClick, { once: true });
+    return () => window.removeEventListener('click', onClick);
+  }, []);
 
-      // Handlers
-      el("buyBtn").onclick = ()=> {
-        const sym = el("symSelect").value;
-        const micros = Math.max(100, parseInt(el("microsInput").value||"0",10));
-        buy(sym, micros);
-      };
-      el("sellBtn").onclick = ()=> {
-        const sym = el("symSelect").value;
-        const micros = Math.max(100, parseInt(el("microsInput").value||"0",10));
-        sell(sym, micros);
-      };
-      el("microsInput").oninput = updateEstimates;
-      el("symSelect").onchange = updateEstimates;
+  // Help popups (10-word explanations)
+  const helpItems = [
+    { key: "bucks", text: "Bucks are your in-game cash used for trading decisions." },
+    { key: "leverage", text: "Leverage equals borrowed funds available only for today’s trading." },
+    { key: "exposure", text: "Exposure is Bucks plus Leverage currently deployed into this trade." },
+    { key: "pnl", text: "P&L shows profit or loss changing live with price." },
+    { key: "flow", text: "Flow estimates total market money moving through this symbol." },
+    { key: "extract", text: "Extraction shows your share captured from today’s overall trading flow." },
+    { key: "candles", text: "Green closes higher than open; red closes below open." },
+    { key: "volume", text: "Volume counts traded shares; higher bars mean heavier activity." },
+  ];
+  const [showHelp, setShowHelp] = useState(false);
 
-      render();
-      updateEstimates();
-      el("year").textContent = new Date().getFullYear();
-    }
+  return (
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
+      <div className="max-w-6xl mx-auto p-4 md:p-6">
+        <header className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Quant-Lite Simulator</h1>
+            <p className="text-sm text-neutral-600">Candlesticks • Bucks • Leverage • Live P&L • Flow Extraction</p>
+          </div>
+          <button
+            className="rounded-full shadow px-4 py-2 bg-black text-white hover:opacity-90"
+            onClick={() => setShowHelp(true)}
+            aria-label="Open help"
+            title="Open help"
+          >
+            ? Help
+          </button>
+        </header>
 
-    function updateEstimates(){
-      const sym = el("symSelect").value;
-      const micros = Math.max(100, parseInt(el("microsInput").value||"0",10));
-      const {notional, fee} = estimate(sym, micros);
-      el("estNotional").textContent = `$${fmt(notional)} (demo)`;
-      el("estFee").textContent = `$${fmt(fee,4)}`;
-    }
+        {/* Controls */}
+        <div className="grid md:grid-cols-4 gap-3 mb-4">
+          <div className="bg-white p-4 rounded-2xl shadow">
+            <label className="text-xs uppercase tracking-wide text-neutral-500">Symbol</label>
+            <select
+              className="w-full mt-1 border rounded-xl p-2"
+              value={symbol}
+              onChange={(e) => {
+                const sym = e.target.value;
+                setSymbol(sym);
+                // Reset price seed per symbol (simple)
+                const base = 120 + Math.random() * 250;
+                let arr = [];
+                let last = base;
+                for (let i = 0; i < 60; i++) { const bar = nextBar(last); arr.push({ ...bar, t: i }); last = bar.c; }
+                setData(arr);
+                setEntryPrice(arr[arr.length - 1].c);
+                setInPosition(true);
+              }}
+            >
+              {STOCKS.map(s => <option key={s.sym} value={s.sym}>{s.sym} — {s.name}</option>)}
+            </select>
+          </div>
 
-    function render(){
-      // Quotes
-      el("quotes").innerHTML = TICKERS.map(t=>{
-        const px = state.quotes[t.symbol];
-        return `<div class="qbox">
-          <div style="font-size:14px;opacity:.7">${t.symbol}</div>
-          <div style="font-size:28px;font-weight:700">$${fmt(px)}</div>
-          <div style="font-size:12px;opacity:.6">as of ${state.lastUpdate.toLocaleTimeString()}</div>
-        </div>`;
-      }).join("");
+          <div className="bg-white p-4 rounded-2xl shadow" title="Bucks are your in-game cash used for trading decisions.">
+            <label className="text-xs uppercase tracking-wide text-neutral-500">Bucks</label>
+            <input
+              type="number"
+              className="w-full mt-1 border rounded-xl p-2"
+              value={bucks}
+              min={0}
+              step={100}
+              onChange={(e) => setBucks(Math.max(0, Number(e.target.value)))}
+            />
+            <p className="text-xs text-neutral-500 mt-1">Bucks = your cash</p>
+          </div>
 
-      // Portfolio rows + totals
-      let posValue = 0;
-      const rows = TICKERS.map(t=>{
-        const p = state.positions[t.symbol] || { micros:0, avgPrice:0 };
-        const shares = p.micros * MICRO;
-        const last = state.quotes[t.symbol] || 0;
-        const value = shares * last;
-        const pnl = shares * (last - p.avgPrice);
-        posValue += value;
-        const pnlColor = pnl >= 0 ? '#0b7e2d' : '#b00020';
-        return `<div class="tableR">
-          <div>${t.symbol}</div>
-          <div style="text-align:right">${(p.micros||0).toLocaleString()}</div>
-          <div style="text-align:right">${fmt(shares,4)}</div>
-          <div style="text-align:right">$${fmt(p.avgPrice)}</div>
-          <div style="text-align:right">$${fmt(last)}</div>
-          <div style="text-align:right">$${fmt(value)}</div>
-          <div style="text-align:right;color:${pnlColor}">${pnl>=0?'+':''}$${fmt(pnl)}</div>
-        </div>`;
-      }).join("");
-      el("portRows").innerHTML = rows;
+          <div className="bg-white p-4 rounded-2xl shadow" title="Leverage equals borrowed funds available only for today’s trading.">
+            <label className="text-xs uppercase tracking-wide text-neutral-500">Leverage (borrowed today)</label>
+            <input
+              type="range"
+              min={0}
+              max={100000}
+              step={500}
+              value={leverage}
+              onChange={(e) => setLeverage(Number(e.target.value))}
+              className="w-full mt-2"
+            />
+            <div className="flex items-baseline justify-between mt-1">
+              <span className="text-sm font-medium">{leverage.toLocaleString()} Bucks</span>
+              <span className="text-xs text-neutral-500">0 — 100,000</span>
+            </div>
+          </div>
 
-      const equity = state.balance + posValue;
-      el("balance").textContent = `$${fmt(state.balance)}`;
-      el("equity").textContent  = `$${fmt(equity)}`;
-      el("balance2").textContent = `$${fmt(state.balance)}`;
-      el("equity2").textContent  = `$${fmt(equity)}`;
+          <div className="bg-white p-4 rounded-2xl shadow">
+            <label className="text-xs uppercase tracking-wide text-neutral-500">Position</label>
+            <div className="flex gap-2 mt-2">
+              {inPosition ? (
+                <button className="flex-1 rounded-xl bg-emerald-600 text-white py-2" onClick={() => setInPosition(false)}>Exit</button>
+              ) : (
+                <button className="flex-1 rounded-xl bg-blue-600 text-white py-2" onClick={() => { setEntryPrice(latest.c); setInPosition(true); }}>Enter Long</button>
+              )}
+              <button className="rounded-xl border px-3" onClick={() => setEntryPrice(latest.c)} title="Reset your entry at the current price">Re-Anchor</button>
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">Deploys full exposure into a simple long position.</p>
+          </div>
+        </div>
 
-      // Leaderboard
-      const base = 10_000_000;
-      const rivals = [
-        { handle:"phoenix", ret:0.124 },
-        { handle:"quantum", ret:0.082 },
-        { handle:"aurora", ret:-0.013 },
-        { handle:"atlas", ret:0.034 }
-      ];
-      const yourRet = (equity - base)/base;
-      const handle = el("handle").value || "player";
-      const all = [...rivals, {handle, ret:yourRet}].sort((a,b)=>b.ret-a.ret).slice(0,5);
-      el("lbRows").innerHTML = all.map((r,i)=>`
-        <div class="lbRow">
-          <div style="opacity:.7">#${i+1}</div>
-          <div style="font-weight:600">${r.handle}</div>
-          <div style="margin-left:auto;font-variant-numeric:tabular-nums">${r.ret>=0?'+':''}${(r.ret*100).toFixed(2)}%</div>
-        </div>`).join("");
-    }
+        {/* KPIs */}
+        <div className="grid md:grid-cols-4 gap-3 mb-4">
+          <KPI label="Exposure (Bucks + Leverage)" value={exposure} fmt="money" tooltip="Exposure is Bucks plus Leverage currently deployed into this trade." />
+          <KPI label="Units Held" value={units} fmt="units" tooltip="How many shares your exposure buys at entry price." />
+          <KPI label="Unrealized P&L" value={unrealizedPL} fmt="pnl" tooltip="P&L shows profit or loss changing live with price." />
+          <KPI label="Extraction of Flow" value={extractionPct} fmt="percent" tooltip="Your profit share relative to estimated overall market flow." />
+        </div>
 
-    function toast(msg){
-      const t = el("toast");
-      t.textContent = msg; t.style.display = "block";
-      setTimeout(()=>{ t.style.display = "none"; }, 1500);
-    }
+        {/* Chart Card */}
+        <div className="bg-white rounded-2xl shadow p-4 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-neutral-500">{symbol} • Live Candles (sim) • Last {data.length}</div>
+            <div className="text-sm">Price: <span className="font-semibold">{latest.c.toFixed(2)}</span></div>
+          </div>
+          <CandleChart data={data} />
+          <div className="mt-2 flex items-center justify-between text-sm text-neutral-600">
+            <div title="Volume counts traded shares; higher bars mean heavier activity.">Total Volume: {totalVolume.toLocaleString()}</div>
+            <div title="Flow estimates total market money moving through this symbol.">Est. Flow (scaled Bucks): {flowBucks.toFixed(2)}</div>
+          </div>
+        </div>
 
-    // Boot
-    setup();
-  </script>
-</body>
-</html>
+        {/* Legend / micro-tooltips */}
+        <div className="flex flex-wrap gap-2 text-xs text-neutral-600 mb-10">
+          <Badge text="Green candle closes above open" />
+          <Badge text="Red candle closes below open" />
+          <Badge text="Wick shows intrabar high and low" />
+          <Badge text="Re-Anchor resets entry to current price" />
+          <Badge text="Exit closes position, freezing P&L" />
+        </div>
+
+        {/* Floating Help Modal */}
+        {showHelp && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowHelp(false)}>
+            <div className="bg-white w-full max-w-xl rounded-2xl shadow-xl p-5" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold">Quick Help</h2>
+                <button className="rounded-full px-3 py-1 border" onClick={() => setShowHelp(false)}>Close</button>
+              </div>
+              <p className="text-sm text-neutral-600 mb-3">Ten-word popups explaining what you see on screen:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {helpItems.map(h => (
+                  <div key={h.key} className="border rounded-xl p-3 text-sm" title={h.text}>{h.text}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KPI({ label, value, fmt = "number", tooltip }) {
+  let display = String(value);
+  if (fmt === "money") display = `${value < 0 ? "-" : ""}$${Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (fmt === "pnl") display = `${value < 0 ? "-" : "+"}$${Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  if (fmt === "percent") display = `${value.toFixed(2)}%`;
+  if (fmt === "units") display = `${value.toFixed(3)}`;
+  return (
+    <div className="bg-white p-4 rounded-2xl shadow" title={tooltip}>
+      <div className="text-xs uppercase tracking-wide text-neutral-500">{label}</div>
+      <div className={`mt-1 text-xl font-semibold ${fmt === 'pnl' ? (value >= 0 ? 'text-emerald-600' : 'text-red-600') : ''}`}>{display}</div>
+    </div>
+  );
+}
+
+function Badge({ text }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border px-3 py-1">{text}</span>
+  );
+}
